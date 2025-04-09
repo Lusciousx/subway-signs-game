@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Subway Signs - Game</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="game">
+  <div class="hud">
+    <span id="score">Score: 0</span>
+    <span id="streak">Streak: 0</span>
+    <span id="player-name"></span>
+  </div>
+  <canvas id="gameCanvas" width="360" height="600"></canvas>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
