@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Subway Signs</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="landing">
+  <div class="container">
+    <h1>🚨 Subway Signs</h1>
+    <p>Join the rush. Collect glasses. Dodge signs. Be unstoppable.</p>
+    <a class="btn" href="play.html">Play Now</a>
+
+    <div class="leaderboard-preview">
+      <h2>Top Players</h2>
+      <ul id="preview-leaderboard"></ul>
+    </div>
+  </div>
+
+  <script>
+    fetch('/api/leaderboard/top')
+      .then(res => res.json())
+      .then(data => {
+        const list = document.getElementById('preview-leaderboard');
+        data.forEach(p => {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <img src="${p.avatar}" alt="${p.name}" />
+            <strong>${p.name}</strong> - ${p.score}
+          `;
+          list.appendChild(li);
+        });
+      });
+  </script>
+</body>
+</html>
