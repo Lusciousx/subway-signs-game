@@ -27,9 +27,6 @@ A fast-paced endless runner game built for the browser. Inspired by Subway Surfe
 ```bash
 npm install
 npm start
-
-5. Scroll down and click the green **“Commit new file”** button
-
----
-
-Once you’ve done that, reply **“Ready”** and I’ll guide you through deploying your backend on **Railway** 🚂
+## 🚀 Created By  
+**Luscious** – with zero coding experience but 100% execution.  
+This project proves you don’t need to be a developer to launch something amazing.
