@@ -1,62 +1,58 @@
 const express = require("express");
-const http = require("http");
+const mongoose = require("mongoose");
 const cors = require("cors");
-const socketio = require("socket.io");
-const passport = require("passport");
-const session = require("express-session");
-const authRoutes = require("./auth");
-const leaderboardRoutes = require("./leaderboard");
+const fetch = require("node-fetch"); // Ensure this is installed
 
 const app = express();
-const server = http.createServer(app);
-const io = socketio(server, {
-  cors: {
-    origin: "*",
-  }
-});
+require("dotenv").config();
+
+const Score = require("./models/Score");
 
 app.use(cors());
 app.use(express.json());
-app.use(session({ secret: "secret", resave: false, saveUninitialized: false }));
-app.use(passport.initialize());
-app.use(passport.session());
 
-app.use("/auth", authRoutes);
-app.use("/api/leaderboard", leaderboardRoutes);
+mongoose.connect(process.env.MONGODB_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log("MongoDB connected"))
+.catch((err) => console.error("MongoDB error:", err));
 
-const players = {};
+// Default route for Railway health check
+app.get("/", (req, res) => {
+  res.send("Subway Signs Game server is running 🚀");
+});
 
-io.on("connection", socket => {
-  players[socket.id] = { id: socket.id, x: 150 };
+// Save score to DB
+app.post("/api/leaderboard", async (req, res) => {
+  const { username, score } = req.body;
 
-  socket.on("joinGame", () => {
-    io.emit("updatePlayers", players);
-  });
+  if (!username || score === undefined) {
+    return res.status(400).json({ message: "Username and score required" });
+  }
 
-  socket.on("playerMove", data => {
-    if (players[socket.id]) {
-      players[socket.id].x = data.x;
-      io.emit("updatePlayers", players);
-    }
-  });
+  try {
+    const newScore = new Score({ username, score });
+    await newScore.save();
+    res.status(201).json({ message: "Score submitted!" });
+  } catch (error) {
+    console.error("Score submission failed:", error);
+    res.status(500).json({ message: "Failed to submit score" });
+  }
+});
 
-  socket.on("submitScore", async data => {
-    try {
-      await fetch("https://your-api-url/api/leaderboard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-    } catch (err) {
-      console.log("Failed to save score:", err.message);
-    }
-  });
-
-  socket.on("disconnect", () => {
-    delete players[socket.id];
-    io.emit("updatePlayers", players);
-  });
+// Get top 10 scores
+app.get("/api/leaderboard", async (req, res) => {
+  try {
+    const topScores = await Score.find().sort({ score: -1 }).limit(10);
+    res.json(topScores);
+  } catch (error) {
+    console.error("Fetching leaderboard failed:", error);
+    res.status(500).json({ message: "Failed to fetch leaderboard" });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
