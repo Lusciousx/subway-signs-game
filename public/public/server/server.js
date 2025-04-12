@@ -1,58 +1,75 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const fetch = require("node-fetch"); // Ensure this is installed
+const express = require('express');
+const session = require('express-session');
+const passport = require('passport');
+const TwitterStrategy = require('passport-twitter').Strategy;
+const mongoose = require('mongoose');
+require('dotenv').config();
 
 const app = express();
-require("dotenv").config();
 
-const Score = require("./models/Score");
-
-app.use(cors());
-app.use(express.json());
-
+// 1. MongoDB connection
 mongoose.connect(process.env.MONGODB_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-})
-.then(() => console.log("MongoDB connected"))
-.catch((err) => console.error("MongoDB error:", err));
-
-// Default route for Railway health check
-app.get("/", (req, res) => {
-  res.send("Subway Signs Game server is running 🚀");
+}).then(() => {
+  console.log('✅ Connected to MongoDB');
+}).catch(err => {
+  console.error('❌ MongoDB connection error:', err);
 });
 
-// Save score to DB
-app.post("/api/leaderboard", async (req, res) => {
-  const { username, score } = req.body;
+// 2. Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'defaultsecret',
+  resave: false,
+  saveUninitialized: true,
+}));
 
-  if (!username || score === undefined) {
-    return res.status(400).json({ message: "Username and score required" });
-  }
+// 3. Passport setup
+app.use(passport.initialize());
+app.use(passport.session());
 
-  try {
-    const newScore = new Score({ username, score });
-    await newScore.save();
-    res.status(201).json({ message: "Score submitted!" });
-  } catch (error) {
-    console.error("Score submission failed:", error);
-    res.status(500).json({ message: "Failed to submit score" });
-  }
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
+passport.deserializeUser((obj, done) => {
+  done(null, obj);
 });
 
-// Get top 10 scores
-app.get("/api/leaderboard", async (req, res) => {
-  try {
-    const topScores = await Score.find().sort({ score: -1 }).limit(10);
-    res.json(topScores);
-  } catch (error) {
-    console.error("Fetching leaderboard failed:", error);
-    res.status(500).json({ message: "Failed to fetch leaderboard" });
-  }
+// 4. Twitter OAuth
+passport.use(new TwitterStrategy({
+  consumerKey: process.env.TWITTER_CONSUMER_KEY,
+  consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
+  callbackURL: process.env.TWITTER_CALLBACK_URL,
+}, (token, tokenSecret, profile, cb) => {
+  // You can save user to DB here if needed
+  return cb(null, profile);
+}));
+
+// 5. Routes
+app.get('/', (req, res) => {
+  res.send('Welcome to Subway Signs Game 🚀');
 });
 
+app.get('/auth/twitter', passport.authenticate('twitter'));
+app.get('/auth/twitter/callback',
+  passport.authenticate('twitter', { failureRedirect: '/' }),
+  (req, res) => {
+    res.redirect('/game'); // redirect after successful login
+  });
+
+app.get('/logout', (req, res) => {
+  req.logout(() => {
+    res.redirect('/');
+  });
+});
+
+app.get('/game', (req, res) => {
+  if (!req.isAuthenticated()) return res.redirect('/');
+  res.send(`🎮 Welcome, ${req.user.username}`);
+});
+
+// 6. Start server with dynamic port
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
